@@ -66,9 +66,12 @@ cd chessboard
 python server.py --host 0.0.0.0 --port 8080
 ```
 The server prints the URL. Example: http://192.168.1.7:8080
+
 2. Open the URL on the phone
 ![Image](https://firebasestorage.googleapis.com/v0/b/deltax-hub.firebasestorage.app/o/documents%2Fdefault-company%2Fimages%2F1760426526618_bf868361-ca40-4310-92e8-c3a8f1b97599.jpg?alt=media&token=0ae198a8-6225-4709-8fc5-349224b80305)
+
 3. Select the 8x8 chessboard
+
 4. Place the phone under the camera within the robot workspace
 ![Image](https://firebasestorage.googleapis.com/v0/b/deltax-hub.firebasestorage.app/o/documents%2Fdefault-company%2Fimages%2F1760426644981_04bfa1b2-976c-49d7-be9c-571700dd8ee9.png?alt=media&token=59323a5d-b56e-49a0-b738-3268edc68765)
 ```
