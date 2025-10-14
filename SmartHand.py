@@ -1188,7 +1188,7 @@ class SmartHandApp(QMainWindow):
         self.log_status("Calibration test mode. Click on transformed view to map coordinates.")
         
     def on_transformed_click(self, pos):
-        if self.click_mode is None or self.transformed_frame is None:
+        if self.transformed_frame is None:
             return
             
         label_size = self.transformed_label.size()
@@ -1214,16 +1214,20 @@ class SmartHandApp(QMainWindow):
         
         self.temp_click_point = (img_x, img_y)
         
+        handled_selection = False
+
         if self.click_mode == 'point1':
             self.p1_img_x.setText(str(img_x))
             self.p1_img_y.setText(str(img_y))
             self.btn_click_p1.setStyleSheet("")
             self.log_status(f"Point 1 selected: ({img_x}, {img_y})")
+            handled_selection = True
         elif self.click_mode == 'point2':
             self.p2_img_x.setText(str(img_x))
             self.p2_img_y.setText(str(img_y))
             self.btn_click_p2.setStyleSheet("")
             self.log_status(f"Point 2 selected: ({img_x}, {img_y})")
+            handled_selection = True
         elif self.click_mode == 'test':
             self.test_x_input.setText(str(img_x))
             self.test_y_input.setText(str(img_y))
@@ -1231,6 +1235,7 @@ class SmartHandApp(QMainWindow):
             if self.mapping_matrix is not None:
                 self.calculate_test_coordinates()
             self.log_status(f"Test point selected: ({img_x}, {img_y})")
+            handled_selection = True
         elif self.click_mode == 'calib_test':
             self.calib_test_x.setText(str(img_x))
             self.calib_test_y.setText(str(img_y))
@@ -1238,8 +1243,15 @@ class SmartHandApp(QMainWindow):
                 self.btn_calib_click.setStyleSheet("")
             self.test_mapping_point()
             self.log_status(f"Calibration test point: ({img_x}, {img_y})")
-            
-        self.click_mode = None
+            handled_selection = True
+
+        if handled_selection:
+            self.click_mode = None
+            return
+
+        # No explicit selection in progress – handle click-to-touch when enabled
+        if self.chk_click_to_touch.isChecked():
+            self.handle_click_to_touch(img_x, img_y)
         
     def go_to_current_position(self, point_num):
         """Move robot to current position and update the coordinate field"""
@@ -1256,7 +1268,7 @@ class SmartHandApp(QMainWindow):
         else:
             self.p2_real_x.setText(f"{x:.2f}")
             self.p2_real_y.setText(f"{y:.2f}")
-            
+        
         self.log_status(f"Point {point_num} set to current robot position: ({x:.2f}, {y:.2f})")
 
     def image_point_to_mapping_space(self, img_x, img_y):
@@ -1272,6 +1284,13 @@ class SmartHandApp(QMainWindow):
 
         flipped_y = height - img_y
         return np.array([img_x, flipped_y], dtype=float)
+    
+    def get_motion_feedrate(self):
+        """Return motion feedrate (mm/min) derived from UI speed control."""
+        speed_mm_per_s = float(self.move_speed_spin.value())
+        # G-code feedrates expect mm/min; clamp to a minimal positive value
+        feedrate = max(speed_mm_per_s * 60.0, 1.0)
+        return feedrate
         
     def calibrate_mapping(self):
         try:
@@ -1335,6 +1354,35 @@ class SmartHandApp(QMainWindow):
         real_point = self.mapping_matrix['rotation_scale'] @ img_point + self.mapping_matrix['translation']
         
         return real_point[0], real_point[1]
+    
+    def run_touch_sequence(self, real_x, real_y, phone_z, touch_force, touch_duration, safe_z, feedrate, show_errors=True):
+        """Execute the touch motion sequence. Returns True on success."""
+        touch_z = phone_z - touch_force
+        try:
+            self.log_status("  1. Moving to safe Z height before travel")
+            self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z, feedrate=feedrate))
+
+            self.log_status(f"  2. Moving in XY to target ({real_x:.2f}, {real_y:.2f})")
+            self.log_robot_responses(self.robot_controller.move_linear_absolute(x=real_x, y=real_y, feedrate=feedrate))
+
+            self.log_status(f"  3. Lowering to touch surface Z={touch_z:.2f}")
+            self.log_robot_responses(self.robot_controller.move_linear_absolute(z=touch_z, feedrate=feedrate))
+
+            self.log_status(f"  4. Holding for {touch_duration:.2f}s")
+            self.log_robot_responses(self.robot_controller.dwell(touch_duration))
+
+            self.log_status(f"  5. Lifting back to safe height Z={safe_z:.2f}")
+            self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z, feedrate=feedrate))
+        except Exception as exc:
+            self.log_status(f"Touch sequence failed: {exc}")
+            if show_errors:
+                QMessageBox.critical(self, "Error", f"Touch sequence failed:\n{exc}")
+            return False
+
+        self.robot_position = self.robot_controller.get_position().tolist()
+        self.update_position_display()
+        self.log_status("Touch completed successfully!")
+        return True
         
     def calculate_test_coordinates(self):
         try:
@@ -1571,9 +1619,52 @@ class SmartHandApp(QMainWindow):
     
     def toggle_click_to_touch(self, state):
         if state == Qt.Checked:
-            self.log_status("Click-to-touch enabled")
+            if self.mapping_matrix is None:
+                QMessageBox.warning(self, "Error", "Please calibrate mapping before enabling click-to-touch.")
+                self.chk_click_to_touch.blockSignals(True)
+                self.chk_click_to_touch.setChecked(False)
+                self.chk_click_to_touch.blockSignals(False)
+                return
+            if not self.robot_connected:
+                QMessageBox.warning(self, "Error", "Connect the robot before enabling click-to-touch.")
+                self.chk_click_to_touch.blockSignals(True)
+                self.chk_click_to_touch.setChecked(False)
+                self.chk_click_to_touch.blockSignals(False)
+                return
+            self.log_status("Click-to-touch enabled. Click the transformed view to execute touches.")
         else:
             self.log_status("Click-to-touch disabled")
+        self.click_mode = None
+    
+    def handle_click_to_touch(self, img_x, img_y):
+        """Execute touch sequence triggered by clicking the transformed view."""
+        if not self.chk_click_to_touch.isChecked():
+            return
+        if self.mapping_matrix is None:
+            self.log_status("Click-to-touch ignored: mapping not calibrated.")
+            return
+        if not self.robot_connected:
+            self.log_status("Click-to-touch ignored: robot not connected.")
+            return
+
+        coords = self.image_to_real_coordinates(img_x, img_y)
+        if coords is None:
+            self.log_status("Click-to-touch failed: unable to map coordinates.")
+            return
+
+        real_x, real_y = coords
+        self.test_x_input.setText(str(img_x))
+        self.test_y_input.setText(str(img_y))
+        self.calculate_test_coordinates()
+
+        phone_z = self.phone_z_input.value()
+        touch_force = self.touch_force_spin.value()
+        touch_duration = self.touch_duration_spin.value()
+        safe_z = self.safe_z_input.value()
+        feedrate = self.get_motion_feedrate()
+
+        self.log_status(f"Click-to-touch executing at screen ({img_x}, {img_y}) -> robot ({real_x:.2f}, {real_y:.2f})")
+        self.run_touch_sequence(real_x, real_y, phone_z, touch_force, touch_duration, safe_z, feedrate, show_errors=False)
             
     def execute_test_touch(self):
         if not self.robot_connected:
@@ -1593,32 +1684,11 @@ class SmartHandApp(QMainWindow):
             touch_force = self.touch_force_spin.value()
             touch_duration = self.touch_duration_spin.value()
             safe_z = self.safe_z_input.value()
+            feedrate = self.get_motion_feedrate()
             
             self.log_status(f"Executing touch at screen ({img_x:.0f}, {img_y:.0f}) -> robot ({real_x:.2f}, {real_y:.2f})")
-            touch_z = phone_z - touch_force
-            try:
-                self.log_status("  1. Moving to safe Z height before travel")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z))
-
-                self.log_status(f"  2. Moving in XY to target ({real_x:.2f}, {real_y:.2f})")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(x=real_x, y=real_y))
-
-                self.log_status(f"  3. Lowering to touch surface Z={touch_z:.2f}")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(z=touch_z))
-
-                self.log_status(f"  4. Holding for {touch_duration:.2f}s")
-                self.log_robot_responses(self.robot_controller.dwell(touch_duration))
-
-                self.log_status(f"  5. Lifting back to safe height Z={safe_z:.2f}")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z))
-            except Exception as exc:
-                self.log_status(f"Touch sequence failed: {exc}")
-                QMessageBox.critical(self, "Error", f"Touch sequence failed:\n{exc}")
+            if not self.run_touch_sequence(real_x, real_y, phone_z, touch_force, touch_duration, safe_z, feedrate, show_errors=True):
                 return
-
-            self.robot_position = self.robot_controller.get_position().tolist()
-            self.update_position_display()
-            self.log_status("Touch completed successfully!")
             
         except ValueError:
             QMessageBox.warning(self, "Error", "Invalid coordinates")
@@ -1638,14 +1708,15 @@ class SmartHandApp(QMainWindow):
             
             real_x, real_y = self.image_to_real_coordinates(img_x, img_y)
             safe_z = self.safe_z_input.value()
+            feedrate = self.get_motion_feedrate()
             self.log_status("Moving to target position with safe travel sequence")
 
             try:
                 self.log_status(f"  1. Raising to safe Z={safe_z:.2f}")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z))
+                self.log_robot_responses(self.robot_controller.move_linear_absolute(z=safe_z, feedrate=feedrate))
 
                 self.log_status(f"  2. Moving in XY to ({real_x:.2f}, {real_y:.2f})")
-                self.log_robot_responses(self.robot_controller.move_linear_absolute(x=real_x, y=real_y))
+                self.log_robot_responses(self.robot_controller.move_linear_absolute(x=real_x, y=real_y, feedrate=feedrate))
             except Exception as exc:
                 self.log_status(f"Failed to move to target: {exc}")
                 QMessageBox.critical(self, "Error", f"Failed to move to target:\n{exc}")
