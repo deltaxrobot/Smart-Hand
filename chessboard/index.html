@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng cờ hiệu chuẩn</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-local-ip="{{LOCAL_IP}}">
+    <header class="page-header">
+        <div class="header-content">
+            <h1>Bảng cờ hiệu chuẩn</h1>
+            <p class="ip-label">Địa chỉ IP cục bộ: <span id="local-ip">Đang tải...</span></p>
+        </div>
+        <button
+            type="button"
+            id="toggle-config"
+            class="toggle-config"
+            aria-controls="controls-panel"
+            aria-expanded="false"
+        >
+            ⚙️
+            <span class="sr-only">Cấu hình</span>
+        </button>
+    </header>
+    <main class="layout">
+        <section class="controls" id="controls-panel" aria-label="Cấu hình bảng cờ" tabindex="-1">
+            <h2>Cấu hình</h2>
+            <form id="config-form" autocomplete="off">
+                <label>
+                    Số ô mỗi chiều
+                    <input type="number" id="board-size" min="2" max="30" value="8">
+                </label>
+                <label>
+                    Kích thước ô (px)
+                    <input type="number" id="square-size" min="10" max="200" value="60">
+                </label>
+                <label>
+                    Màu ô tối
+                    <input type="color" id="dark-color" value="#000000">
+                </label>
+                <label>
+                    Màu ô sáng
+                    <input type="color" id="light-color" value="#ffffff">
+                </label>
+                <label>
+                    Lề ngoài (px)
+                    <input type="number" id="board-margin" min="0" max="200" value="20">
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" id="show-coordinates">
+                    Hiển thị tọa độ (hàng, cột)
+                </label>
+                <button type="button" id="reset-config">Khôi phục mặc định</button>
+            </form>
+        </section>
+        <section class="board-wrapper">
+            <div id="board-container">
+                <div id="chessboard" class="chessboard"></div>
+            </div>
+        </section>
+    </main>
+    <footer class="page-footer">
+        <p>Điều chỉnh các thông số để phù hợp với yêu cầu hiệu chuẩn camera.</p>
+    </footer>
+    <script src="/static/app.js"></script>
+</body>
+</html>
