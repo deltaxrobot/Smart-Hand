@@ -81,6 +81,7 @@ cd smartphone
 pip install -r camera/requirements.txt
 python SmartHand.py
 ```
+![Image](https://firebasestorage.googleapis.com/v0/b/deltax-hub.firebasestorage.app/o/documents%2Fdefault-company%2Fimages%2F1760427411207_d3781a5c-b34f-4f12-a1dc-46bb57d6f4f7.png?alt=media&token=106090e1-6429-469a-b091-39474b878668)
 
 ### Safety Features
 - Safe Z Height: Robot always travels at a safe altitude between touches
