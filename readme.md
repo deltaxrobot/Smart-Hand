@@ -76,6 +76,8 @@ The server prints the URL. Example: http://192.168.1.7:8080
 ![Image](https://firebasestorage.googleapis.com/v0/b/deltax-hub.firebasestorage.app/o/documents%2Fdefault-company%2Fimages%2F1760426644981_04bfa1b2-976c-49d7-be9c-571700dd8ee9.png?alt=media&token=59323a5d-b56e-49a0-b738-3268edc68765)
 ```
 
+##Now run Smart Hand software
+
 ```bash
 cd smartphone
 pip install -r camera/requirements.txt
