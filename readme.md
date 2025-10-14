@@ -1,72 +1,72 @@
 ## SmartHand - Robot Delta Phone Interaction System
 
-### Ý tưởng
-Điều khiển robot delta tương tác với app trên điện thoại iPhone (sử dụng bút cảm ứng để chạm vào màn hình điện thoại), có camera để thu hình ảnh từ điện thoại.
+### Concept
+Control a delta robot to interact with an iPhone application using a stylus to tap the screen, with a camera providing visual feedback of the device.
 
-### Vấn đề cần giải quyết
-- Cần biến tọa độ từ trong điện thoại sang tọa độ robot
-- Cần biết mặt phẳng điện thoại để chạm vào an toàn
-- Có các công cụ mô phỏng lại thao tác của tay người trên điện thoại
+### Problems To Solve
+- Convert phone screen coordinates into robot workspace coordinates
+- Detect the phone plane to guarantee safe touch interactions
+- Provide tools that replicate a human hand operating the phone
 
-### Giải pháp (SmartHand.py)
+### Solution (SmartHand.py)
 
-**Phần mềm SmartHand.py** cung cấp giao diện hoàn chỉnh với các chức năng:
+**SmartHand.py** delivers a complete user interface with the following capabilities:
 
-#### 📷 Tab Camera & Detection
-1. **Camera Setup**: Kết nối và điều khiển camera
-2. **Phone Detection**: 
-   - Phương pháp 1: Sử dụng chessboard pattern để detect mặt phẳng
-   - Phương pháp 2: Chọn thủ công 4 góc màn hình điện thoại
-3. **Perspective Transform**: Biến đổi ảnh từ góc nhìn camera sang góc nhìn trực diện (top-down)
+#### Camera & Detection Tab
+1. **Camera Setup:** Connect and control the camera
+2. **Phone Detection:**
+   - Method 1: Detect the phone plane with a chessboard pattern
+   - Method 2: Manually select the four phone screen corners
+3. **Perspective Transform:** Warp the camera view into a top-down phone view
 
-#### 🎯 Tab Calibration
-1. **Coordinate Mapping**: Map tọa độ từ màn hình điện thoại sang workspace robot
-   - Chọn 2 điểm reference trên màn hình
-   - Đo tọa độ robot tương ứng
-   - Tự động tính toán ma trận biến đổi
-2. **Phone Surface Height**: Xác định độ cao Z của mặt phẳng điện thoại
-3. **Save/Load Calibration**: Lưu và load dữ liệu calibration
+#### Calibration Tab
+1. **Coordinate Mapping:** Convert screen coordinates to robot coordinates
+   - Select two reference points on the screen
+   - Measure the corresponding robot coordinates
+   - Automatically compute the transformation matrix
+2. **Phone Surface Height:** Set the Z height of the phone surface
+3. **Save/Load Calibration:** Persist or restore calibration data
 
-#### 🤖 Tab Robot Control
-1. **Robot Connection**: Kết nối với robot Delta qua COM port
-2. **Position Display**: Hiển thị vị trí hiện tại (X, Y, Z)
-3. **Basic Controls**: 
+#### Robot Control Tab
+1. **Robot Connection:** Connect to the Delta robot via COM port
+2. **Position Display:** Show the current robot position (X, Y, Z)
+3. **Basic Controls:**
    - Home robot
    - Move to safe height
    - Emergency stop
-4. **Manual Jog**: Điều khiển robot thủ công theo các trục X, Y, Z
+4. **Manual Jog:** Manually jog along the X, Y, and Z axes
 
-#### 👆 Tab Touch Control
-1. **Touch Settings**: 
-   - Touch force (lực chạm)
-   - Touch duration (thời gian chạm)
+#### Touch Control Tab
+1. **Touch Settings:**
+   - Touch force
+   - Touch duration
    - Movement speed
-2. **Click-to-Touch Mode**: Click trực tiếp trên màn hình để robot tự động chạm
-3. **Test Touch**: Test một điểm cụ thể
-4. **Gesture Recording**: (Tính năng mở rộng) Ghi và phát lại các cử chỉ phức tạp
+2. **Click-to-Touch Mode:** Click the transformed view to command a robot touch
+3. **Test Touch:** Execute a test touch at a selected point
+4. **Gesture Recording:** (Future enhancement) Record and play complex gestures
 
-### Workflow sử dụng
-
-```
-1. Start Camera → Xem feed camera
-2. Detect Phone → Chọn chessboard hoặc 4 góc màn hình
-3. Calibrate Mapping → Chọn 2 điểm reference và đo tọa độ robot
-4. Set Phone Z Height → Xác định độ cao mặt phẳng điện thoại
-5. Connect Robot → Kết nối với robot Delta
-6. Test Touch → Thử chạm một điểm để verify
-7. Use! → Sẵn sàng điều khiển điện thoại
-```
-
-### Chạy chương trình
+### Typical Workflow
 
 ```
-1. Chạy trang web để hiển thị chessboard trên điện thoại
+1. Start Camera -> View the camera feed
+2. Detect Phone -> Detect via chessboard or select four corners
+3. Calibrate Mapping -> Choose reference points and record robot coordinates
+4. Set Phone Z Height -> Define the phone surface height
+5. Connect Robot -> Establish a serial connection to the Delta robot
+6. Test Touch -> Verify a sample touch
+7. Operate! -> Control the phone through the robot
+```
+
+### Running The System
+
+```
+1. Serve a webpage that displays the chessboard:
 cd chessboard
 python server.py --host 0.0.0.0 --port 8080
-Khi server chạy sẽ log ra địa chỉ của web. Ví dụ: http://192.168.1.7:8080
-2. Mở web trên địa thoại theo địa chỉ trên.
-3. Chọn bàn cờ 8x8
-4. Đặt điện thoại bên dưới camera, trong vùng làm việc của robot
+The server prints the URL. Example: http://192.168.1.7:8080
+2. Open the URL on the phone
+3. Select the 8x8 chessboard
+4. Place the phone under the camera within the robot workspace
 
 ```
 
@@ -76,9 +76,8 @@ pip install -r camera/requirements.txt
 python SmartHand.py
 ```
 
-### Tính năng an toàn
-- Safe Z Height: Robot luôn di chuyển ở độ cao an toàn khi không chạm
-- Visual feedback: Hiển thị tất cả các điểm trên màn hình
-- Status logging: Ghi lại tất cả các hành động
-- Manual control: Có thể điều khiển thủ công bất cứ lúc nào
-
+### Safety Features
+- Safe Z Height: Robot always travels at a safe altitude between touches
+- Visual Feedback: All points are rendered on the transformed view
+- Status Logging: Every action is logged in the interface
+- Manual Override: Manual jogging is available at any time
