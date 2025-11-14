@@ -73,43 +73,69 @@
             return;
         }
 
-        const styles = window.getComputedStyle(boardWrapper);
-        const paddingX =
-            (Number.parseFloat(styles.paddingLeft) || 0) + (Number.parseFloat(styles.paddingRight) || 0);
-        const paddingY =
-            (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0);
+        // On mobile, use viewport width directly
+        const isMobile = mobileMediaQuery.matches;
+        let innerWidth, innerHeight;
+        
+        if (isMobile) {
+            innerWidth = window.innerWidth;
+            innerHeight = window.innerHeight;
+        } else {
+            const styles = window.getComputedStyle(boardWrapper);
+            const paddingX =
+                (Number.parseFloat(styles.paddingLeft) || 0) + (Number.parseFloat(styles.paddingRight) || 0);
+            const paddingY =
+                (Number.parseFloat(styles.paddingTop) || 0) + (Number.parseFloat(styles.paddingBottom) || 0);
 
-        const innerWidth = bounds.width - paddingX;
-        const innerHeight = bounds.height - paddingY;
+            innerWidth = bounds.width - paddingX;
+            innerHeight = bounds.height - paddingY;
+        }
 
         if (innerWidth <= 0 || innerHeight <= 0) {
             return;
         }
 
-        const minDimension = Math.min(innerWidth, innerHeight);
+        let boardWidth, boardHeight, effectiveMargin, squareDimension;
 
-        const maxMargin = Math.max(Math.floor(minDimension / 2) - 1, 0);
-        const effectiveMargin = clamp(state.boardMargin, 0, maxMargin);
-
-        if (effectiveMargin !== state.boardMargin) {
-            state.boardMargin = effectiveMargin;
-            if (marginInput) {
-                marginInput.value = effectiveMargin;
+        if (isMobile) {
+            // On mobile: chessboard fills full width, margin = 0
+            effectiveMargin = 0;
+            boardWidth = innerWidth;
+            boardHeight = innerWidth; // Square aspect ratio
+            squareDimension = boardWidth;
+            
+            // Update margin input if needed
+            if (marginInput && state.boardMargin !== 0) {
+                state.boardMargin = 0;
+                marginInput.value = 0;
             }
+        } else {
+            const minDimension = Math.min(innerWidth, innerHeight);
+            const maxMargin = Math.max(Math.floor(minDimension / 2) - 1, 0);
+            effectiveMargin = clamp(state.boardMargin, 0, maxMargin);
+
+            if (effectiveMargin !== state.boardMargin) {
+                state.boardMargin = effectiveMargin;
+                if (marginInput) {
+                    marginInput.value = effectiveMargin;
+                }
+            }
+
+            const squareSpace = Math.max(minDimension - effectiveMargin * 2, 0);
+            if (squareSpace <= 0) {
+                return;
+            }
+
+            const desiredWidth = state.size * state.squareSize;
+            const desiredHeight = state.size * state.squareSize;
+            const ratioLimit = Math.min(squareSpace / desiredWidth, squareSpace / desiredHeight);
+            const scale = Number.isFinite(ratioLimit) && ratioLimit > 0 ? ratioLimit : 1;
+
+            boardWidth = desiredWidth * scale;
+            boardHeight = desiredHeight * scale;
+            squareDimension = squareSpace + effectiveMargin * 2;
         }
 
-        const squareSpace = Math.max(minDimension - effectiveMargin * 2, 0);
-        if (squareSpace <= 0) {
-            return;
-        }
-
-        const desiredWidth = state.size * state.squareSize;
-        const desiredHeight = state.size * state.squareSize;
-        const ratioLimit = Math.min(squareSpace / desiredWidth, squareSpace / desiredHeight);
-        const scale = Number.isFinite(ratioLimit) && ratioLimit > 0 ? ratioLimit : 1;
-
-        const boardWidth = desiredWidth * scale;
-        const boardHeight = desiredHeight * scale;
         if (!Number.isFinite(boardWidth) || !Number.isFinite(boardHeight) || boardWidth <= 0 || boardHeight <= 0) {
             return;
         }
@@ -121,17 +147,28 @@
         board.style.gridTemplateRows = `repeat(${state.size}, 1fr)`;
         board.style.width = `${boardWidth}px`;
         board.style.height = `${boardHeight}px`;
+        board.style.maxWidth = `${boardWidth}px`;
+        board.style.maxHeight = `${boardHeight}px`;
 
         if (state.showCoordinates) {
             board.style.setProperty('--coord-font-size', `${coordFontSize}px`);
         } else {
             board.style.removeProperty('--coord-font-size');
         }
-
-        const squareDimension = squareSpace + effectiveMargin * 2;
-        boardContainer.style.width = `${squareDimension}px`;
-        boardContainer.style.height = `${squareDimension}px`;
-        boardContainer.style.padding = `${effectiveMargin}px`;
+        
+        // Set container size
+        if (isMobile) {
+            boardContainer.style.width = `${innerWidth}px`;
+            boardContainer.style.maxWidth = `${innerWidth}px`;
+            boardContainer.style.height = `${boardHeight}px`;
+            boardContainer.style.padding = '0';
+            boardContainer.style.boxSizing = 'border-box';
+            boardContainer.style.margin = '0';
+        } else {
+            boardContainer.style.width = `${squareDimension}px`;
+            boardContainer.style.height = `${squareDimension}px`;
+            boardContainer.style.padding = `${effectiveMargin}px`;
+        }
     }
 
     function generateBoard() {
